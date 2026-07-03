@@ -2,7 +2,42 @@
 
 A single-file Python CLI for giving guests access to [TTLock](https://open.ttlock.com)
 smart locks — **without the guest needing the TTLock app, an account, or
-anything installed**. Built for short-term rentals, hotels, and Airbnbs.
+anything installed**. Built for and deployed at a real hotel; useful for
+short-term rentals, hotels, and Airbnbs.
+
+## Background
+
+A hotel running TTLock smart locks on its 22 guest rooms asked for help with
+check-in friction: their process required every guest to receive an eKey
+through the TTLock app — meaning each guest had to open an email, create an
+account, set a password, and install an app just to get into their room.
+They wanted what TTLock's API calls an "unlock link": a URL the guest simply
+taps and the door opens.
+
+Getting there meant working through the real constraints of a live
+deployment, all diagnosed against the hotel's production account:
+
+- **Hardware reality.** Remote links route internet → TTLock cloud → a WiFi
+  gateway box → Bluetooth → lock. Auditing the account showed a single
+  gateway covering a handful of locks, while the app "worked everywhere"
+  because a phone at the door is its own Bluetooth radio — a distinction the
+  owners weren't aware of. The tool surfaces gateway coverage per lock and
+  refuses to create links that physically cannot work, offering keypad
+  passcodes (which need no gateway) as the fallback.
+- **An undocumented API pitfall.** Live testing revealed that TTLock ties
+  the unlock link URL to the *recipient account*, not the individual eKey:
+  two keys sent to the same account return the **same URL**. A naive
+  implementation reusing one holder account would hand every guest a link
+  opening every active door. The tool therefore registers a fresh throwaway
+  holder account per link, scoping each URL to exactly one key and one door.
+- **Operations, not just code.** The people running this day to day are
+  front-desk staff, not developers: commands accept room names instead of
+  lock IDs, times are interpreted in each lock's own timezone, credentials
+  load from a local env file, and every generated key prints its own
+  ready-to-paste revocation command for checkout.
+
+The result: one command per guest, a text message with a link, and no app on
+the guest's phone. Details identifying the property have been removed.
 
 Two ways in:
 
